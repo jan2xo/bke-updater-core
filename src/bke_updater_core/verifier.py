@@ -1,0 +1,19 @@
+import base64,json
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from .models import SignedUpdatePolicy
+class VerificationError(ValueError): pass
+class PolicyVerifier:
+    def __init__(self,trusted_keys:dict[str,bytes]): self.trusted_keys=trusted_keys
+    def verify(self,document:dict,*,product_id:str,platform:str,architecture:str,channel:str,last_revision:int|None=None):
+        required={"schema","product_id","current_version","latest_version","minimum_supported_version","channel","platform","architecture","release_id","artifact_id","artifact_sha256","artifact_size","content_type","published_at","issued_at","revision","signing_key_id","algorithm","signature"}
+        if set(document)!=required or document["schema"]!="bke.update-policy.v1" or document["algorithm"]!="Ed25519": raise VerificationError("unsupported policy contract")
+        for field,expected in (("product_id",product_id),("platform",platform),("architecture",architecture),("channel",channel)):
+            if document[field]!=expected: raise VerificationError(f"{field} mismatch")
+        if last_revision is not None and document["revision"]<=last_revision: raise VerificationError("stale policy")
+        key=self.trusted_keys.get(document["signing_key_id"])
+        if key is None: raise VerificationError("unknown signing key")
+        unsigned={k:v for k,v in document.items() if k!="signature"}
+        canonical=json.dumps(unsigned,sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()
+        try: Ed25519PublicKey.from_public_bytes(key).verify(base64.b64decode(document["signature"],validate=True),canonical)
+        except Exception as exc: raise VerificationError("invalid policy signature") from exc
+        return SignedUpdatePolicy(raw=document,**document)
