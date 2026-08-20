@@ -2,7 +2,8 @@ from __future__ import annotations
 import argparse, os, shutil, subprocess, time
 from pathlib import Path
 from .protocol import HelperPlan
-
+from ..models import TransactionState
+from ..state import TransactionStore
 class UnsafeHelperPlan(ValueError): pass
 def _root(path:Path,name:str)->Path:
     value=path.expanduser().resolve()
@@ -19,6 +20,9 @@ def validate_plan(plan:HelperPlan)->tuple[Path,Path,Path,Path]:
     executable=_inside(root,plan.executable,"executable")
     _inside(stage,stage/executable.relative_to(root),"staged executable")
     return root,stage,backup,executable
+def _terminal(plan:HelperPlan,state:TransactionState,**extra)->None:
+    if plan.transaction_root and plan.transaction_id:
+        TransactionStore(plan.transaction_root).write(plan.transaction_id,state,extra)
 def wait_for_exit(pid:int|None,timeout:float=30.0):
     if pid is None:return
     deadline=time.monotonic()+timeout
@@ -38,13 +42,18 @@ def replace_and_launch(plan:HelperPlan,wait_pid:int|None=None)->int:
         if plan.launch:
             proc=subprocess.Popen([str(target)]); time.sleep(.25)
             if proc.poll() is not None and proc.returncode!=0: raise RuntimeError("updated process failed startup")
+        _terminal(plan,TransactionState.COMMITTED,target_version=plan.transaction_id or "")
         return 0
-    except Exception:
+    except Exception as exc:
         if root.exists(): shutil.rmtree(root)
-        shutil.copytree(backup,root); raise
+        shutil.copytree(backup,root)
+        _terminal(plan,TransactionState.ROLLED_BACK,reason=str(exc))
+        raise
 def main()->int:
     parser=argparse.ArgumentParser()
     for name in ("install-root","staged-root","backup-root","executable"): parser.add_argument("--"+name,required=True)
-    parser.add_argument("--wait-pid",type=int); args=parser.parse_args()
-    return replace_and_launch(HelperPlan(Path(args.install_root),Path(args.staged_root),Path(args.backup_root),Path(args.executable)),args.wait_pid)
+    parser.add_argument("--wait-pid",type=int); parser.add_argument("--transaction-root"); parser.add_argument("--transaction-id")
+    args=parser.parse_args()
+    plan=HelperPlan(Path(args.install_root),Path(args.staged_root),Path(args.backup_root),Path(args.executable),transaction_root=Path(args.transaction_root) if args.transaction_root else None,transaction_id=args.transaction_id)
+    return replace_and_launch(plan,args.wait_pid)
 if __name__=="__main__": raise SystemExit(main())
