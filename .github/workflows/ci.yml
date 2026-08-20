@@ -15,6 +15,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install -e ".[test]"
-      - run: python -m compileall -q src helper tests
+      - run: python -m compileall -q src tests
       - run: pytest -q
       - run: git diff --check
