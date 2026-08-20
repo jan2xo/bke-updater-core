@@ -79,6 +79,10 @@ def _launch_and_verify(executable:Path, plan:HelperPlan)->subprocess.Popen|None:
             raise RuntimeError(f"updated process exited before readiness: {code}")
         try:
             if plan.ready_marker in lines.get(timeout=.05):
+                time.sleep(0.2)
+                code=process.poll()
+                if code is not None:
+                    raise RuntimeError(f"updated process exited after readiness: {code}")
                 return process
         except queue.Empty:
             pass
