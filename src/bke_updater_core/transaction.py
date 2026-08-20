@@ -11,7 +11,11 @@ class UpdateTransaction:
     def recover(self):
         state=TransactionState(self.store.read(self.id)["state"])
         if state in {TransactionState.COMMITTED,TransactionState.ROLLED_BACK,TransactionState.FAILED}: return state
-        if state in {TransactionState.CREATED,TransactionState.DOWNLOADING,TransactionState.VERIFIED,TransactionState.STAGED,TransactionState.WAITING_FOR_EXIT}: return state
+        if state in {TransactionState.CREATED,TransactionState.DOWNLOADING,TransactionState.VERIFIED,TransactionState.STAGED,TransactionState.WAITING_FOR_EXIT}:
+            if self.plan.staged_artifact.exists():
+                self.plan.staged_artifact.unlink()
+            self.transition(TransactionState.FAILED,reason="interrupted before replacement")
+            return TransactionState.FAILED
         if state in {TransactionState.REPLACING,TransactionState.VERIFYING}: self.rollback("interrupted replacement"); return TransactionState.ROLLED_BACK
         raise TransactionError("unknown transaction state")
     def rollback(self,reason:str):
