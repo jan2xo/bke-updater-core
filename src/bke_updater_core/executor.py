@@ -55,7 +55,9 @@ def replace_transaction(
         if plan.target_install_root.exists():
             shutil.rmtree(plan.target_install_root)
         plan.target_install_root.mkdir(parents=True)
-        shutil.copy2(plan.staged_artifact, plan.target_install_root / plan.executable.name)
+        installed_executable = plan.target_install_root / plan.executable.name
+        shutil.copy2(plan.staged_artifact, installed_executable)
+        os.chmod(installed_executable, 0o755)
         tx.transition(TransactionState.VERIFYING)
         if interruption:
             interruption(TransactionState.VERIFYING)
