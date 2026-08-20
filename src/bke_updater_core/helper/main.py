@@ -9,12 +9,17 @@ def _root(path:Path,name:str)->Path:
     value=path.expanduser().resolve()
     if not value.exists() or not value.is_dir() or value.parent==value: raise UnsafeHelperPlan(f"invalid {name} root")
     return value
+
+def _backup_root(path:Path)->Path:
+    value=path.expanduser().resolve()
+    if value.parent==value or not value.parent.exists() or not value.parent.is_dir(): raise UnsafeHelperPlan("invalid backup root")
+    return value
 def _inside(root:Path,target:Path,name:str)->Path:
     resolved=target.resolve()
     if os.path.commonpath((str(root),str(resolved)))!=str(root): raise UnsafeHelperPlan(f"{name} escapes root")
     return resolved
 def validate_plan(plan:HelperPlan)->tuple[Path,Path,Path,Path]:
-    root,stage,backup=_root(plan.install_root,"install"),_root(plan.staged_root,"stage"),_root(plan.backup_root,"backup")
+    root,stage,backup=_root(plan.install_root,"install"),_root(plan.staged_root,"stage"),_backup_root(plan.backup_root)
     if len({root,stage,backup})!=3: raise UnsafeHelperPlan("helper roots must be distinct")
     if any(a in b.parents or b in a.parents for a,b in ((root,stage),(root,backup),(stage,backup))): raise UnsafeHelperPlan("helper roots overlap")
     executable=_inside(root,plan.executable,"executable")
