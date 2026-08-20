@@ -14,4 +14,4 @@ class SignedUpdatePolicy:
     schema:str; product_id:str; current_version:str; latest_version:str; minimum_supported_version:str; channel:str; platform:str; architecture:str; release_id:str; artifact_id:str; artifact_sha256:str; artifact_size:int; content_type:str; published_at:str; issued_at:str; revision:int; signing_key_id:str; algorithm:str; signature:str; raw:dict[str,Any]
 @dataclass(frozen=True)
 class UpdatePlan:
-    product_id:str; target_install_root:Path; expected_current_version:str; target_version:str; staged_artifact:Path; backup_path:Path; executable:Path; target_pid:int|None=None; health_check:str|None=None
+    product_id:str; target_install_root:Path; expected_current_version:str; target_version:str; staged_artifact:Path; backup_path:Path; executable:Path; target_pid:int|None=None; health_check:str|None=None; expected_sha256:str=""; expected_size:int=0
