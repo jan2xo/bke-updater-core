@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from pathlib import Path
-
 @dataclass(frozen=True)
 class HelperPlan:
     install_root: Path
@@ -8,3 +7,5 @@ class HelperPlan:
     backup_root: Path
     executable: Path
     launch: bool = True
+    transaction_root: Path | None = None
+    transaction_id: str | None = None
