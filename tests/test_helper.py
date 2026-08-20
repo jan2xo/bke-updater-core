@@ -11,9 +11,9 @@ def program(path: Path, code: int):
 
 def service(path: Path, marker: Path, pid_file: Path, code: int = 0):
     if code:
-        body = f"#!/usr/bin/env python3\nimport os\nfrom pathlib import Path\nPath({str(pid_file)!r}).write_text(str(os.getpid()))\nPath({str(marker)!r}).write_text('READY')\nraise SystemExit({code})\n"
+        body = f"#!/usr/bin/env python3\nimport os\nfrom pathlib import Path\nPath({str(pid_file)!r}).write_text(str(os.getpid()))\nPath({str(marker)!r}).write_text('READY')\nprint('READY', flush=True)\nraise SystemExit({code})\n"
     else:
-        body = f"#!/usr/bin/env python3\nimport os, time\nfrom pathlib import Path\nPath({str(pid_file)!r}).write_text(str(os.getpid()))\nPath({str(marker)!r}).write_text('READY')\ntime.sleep(60)\n"
+        body = f"#!/usr/bin/env python3\nimport os, time\nfrom pathlib import Path\nPath({str(pid_file)!r}).write_text(str(os.getpid()))\nPath({str(marker)!r}).write_text('READY')\nprint('READY', flush=True)\ntime.sleep(60)\n"
     path.write_text(body)
     path.chmod(0o755)
 
