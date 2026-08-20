@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"BKE Signed Update Policy v1",
+  "type":"object",
+  "required":["schema","product_id","current_version","latest_version","minimum_supported_version","channel","platform","architecture","release_id","artifact_id","artifact_sha256","artifact_size","content_type","published_at","issued_at","revision","signing_key_id","algorithm","signature"],
+  "properties":{
+    "schema":{"const":"bke.update-policy.v1"},
+    "product_id":{"type":"string","pattern":"^[A-Za-z0-9._-]+$"},
+    "current_version":{"type":"string"},"latest_version":{"type":"string"},"minimum_supported_version":{"type":"string"},
+    "channel":{"enum":["stable","lts"]},"platform":{"type":"string"},"architecture":{"type":"string"},
+    "release_id":{"type":"string"},"artifact_id":{"type":"string"},
+    "artifact_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"artifact_size":{"type":"integer","minimum":0},
+    "content_type":{"type":"string"},"published_at":{"type":"string"},"issued_at":{"type":"string"},
+    "revision":{"type":"integer","minimum":0},"signing_key_id":{"type":"string"},"algorithm":{"const":"Ed25519"},"signature":{"type":"string"}
+  },"additionalProperties":false
+}
