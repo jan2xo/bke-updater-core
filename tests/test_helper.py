@@ -12,8 +12,9 @@ def program(path: Path, code: int):
 def test_external_helper_replaces_and_launches(tmp_path):
     root=tmp_path/"agent"; stage=tmp_path/"stage"; backup=tmp_path/"backup"
     root.mkdir(); stage.mkdir(); program(root/"agent",0); program(stage/"agent",0)
+    expected=(stage/"agent").read_bytes()
     replace_and_launch(HelperPlan(root,stage,backup,root/"agent"))
-    assert (root/"agent").read_bytes()==(stage/"agent").read_bytes() if stage.exists() else True
+    assert (root/"agent").read_bytes()==expected
 
 def test_external_helper_restores_on_failed_startup(tmp_path):
     root=tmp_path/"agent"; stage=tmp_path/"stage"; backup=tmp_path/"backup"
