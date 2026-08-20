@@ -1,6 +1,7 @@
-import base64,json
+import base64,json,re
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from .models import SignedUpdatePolicy
+from .versioning import VersionError,parse_version
 class VerificationError(ValueError): pass
 class PolicyVerifier:
     def __init__(self,trusted_keys:dict[str,bytes]): self.trusted_keys=trusted_keys
@@ -9,6 +10,13 @@ class PolicyVerifier:
         if set(document)!=required or document["schema"]!="bke.update-policy.v1" or document["algorithm"]!="Ed25519": raise VerificationError("unsupported policy contract")
         for field,expected in (("product_id",product_id),("platform",platform),("architecture",architecture),("channel",channel)):
             if document[field]!=expected: raise VerificationError(f"{field} mismatch")
+        try:
+            current=parse_version(document["current_version"]); latest=parse_version(document["latest_version"]); minimum=parse_version(document["minimum_supported_version"])
+        except (VersionError,TypeError): raise VerificationError("invalid semantic version")
+        if minimum>latest: raise VerificationError("minimum version exceeds latest version")
+        if not isinstance(document["artifact_size"],int) or document["artifact_size"]<0: raise VerificationError("invalid artifact size")
+        if not isinstance(document["artifact_sha256"],str) or not re.fullmatch(r"[0-9a-fA-F]{64}",document["artifact_sha256"]): raise VerificationError("invalid artifact hash")
+        if not isinstance(document["revision"],int) or document["revision"]<0: raise VerificationError("invalid policy revision")
         if last_revision is not None and document["revision"]<=last_revision: raise VerificationError("stale policy")
         key=self.trusted_keys.get(document["signing_key_id"])
         if key is None: raise VerificationError("unknown signing key")
