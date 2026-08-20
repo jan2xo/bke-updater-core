@@ -1,9 +1,7 @@
 from pathlib import Path
-import sys
 import pytest
-sys.path.insert(0, str(Path(__file__).parents[1]))
-from helper.main import replace_and_launch
-from helper.protocol import HelperPlan
+from bke_updater_core.helper.main import replace_and_launch
+from bke_updater_core.helper.protocol import HelperPlan
 
 def program(path: Path, code: int):
     path.write_text("#!/usr/bin/env python3\nimport sys\nsys.exit(%d)\n" % code)
