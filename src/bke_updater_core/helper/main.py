@@ -21,13 +21,17 @@ def validate_plan(plan:HelperPlan)->tuple[Path,Path,Path,Path]:
     _inside(stage,stage/executable.relative_to(root),"staged executable")
     return root,stage,backup,executable
 def _terminal(plan:HelperPlan,state:TransactionState,**extra)->None:
-    if plan.transaction_root and plan.transaction_id:
-        TransactionStore(plan.transaction_root).write(plan.transaction_id,state,extra)
+    if plan.transaction_root and plan.transaction_id: TransactionStore(plan.transaction_root).write(plan.transaction_id,state,extra)
 def wait_for_exit(pid:int|None,timeout:float=30.0):
     if pid is None:return
     deadline=time.monotonic()+timeout
     while time.monotonic()<deadline:
-        try: os.kill(pid,0)
+        try:
+            os.kill(pid,0)
+            stat=Path(f"/proc/{pid}/stat")
+            if stat.exists():
+                fields=stat.read_text().split()
+                if len(fields)>2 and fields[2]=="Z": return
         except OSError:return
         time.sleep(.1)
     raise TimeoutError("target process did not exit")
@@ -40,8 +44,8 @@ def replace_and_launch(plan:HelperPlan,wait_pid:int|None=None)->int:
         shutil.rmtree(root); shutil.copytree(stage,root)
         target=root/executable.relative_to(root)
         if plan.launch:
-            proc=subprocess.Popen([str(target)]); time.sleep(.25)
-            if proc.poll() is not None and proc.returncode!=0: raise RuntimeError("updated process failed startup")
+            proc=subprocess.Popen([str(target)]); proc.wait(timeout=10)
+            if proc.returncode!=0: raise RuntimeError("updated process failed startup")
         _terminal(plan,TransactionState.COMMITTED,target_version=plan.transaction_id or "")
         return 0
     except Exception as exc:
