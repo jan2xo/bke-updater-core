@@ -6,6 +6,7 @@ from .executor import ArtifactError, replace_transaction, verify_artifact
 from .staging import StagingError, stage_verified_zip
 from .privileged import FileReplayGuard, PrivilegedRequestError, PrivilegedRequestVerifier, PrivilegedUpdateRequest
 from .target_policy import TargetInstallPolicy, TargetInstallPolicyVerifier, TargetPolicyError, target_policy_sha256
+from .authority import AuthorizedUpdate, AuthorityCompositionError, compose_authority
 
 __all__ = [
     "Decision",
@@ -29,4 +30,7 @@ __all__ = [
     "TargetInstallPolicyVerifier",
     "TargetPolicyError",
     "target_policy_sha256",
+    "AuthorizedUpdate",
+    "AuthorityCompositionError",
+    "compose_authority",
 ]
