@@ -7,6 +7,7 @@ from .staging import StagingError, stage_verified_zip
 from .privileged import FileReplayGuard, PrivilegedRequestError, PrivilegedRequestVerifier, PrivilegedUpdateRequest
 from .target_policy import TargetInstallPolicy, TargetInstallPolicyVerifier, TargetPolicyError, target_policy_sha256
 from .authority import AuthorizedUpdate, AuthorityCompositionError, compose_authority
+from .privileged_entrypoint import PrivilegedExecutionConfig, execute_privileged_update
 
 __all__ = [
     "Decision",
@@ -33,4 +34,6 @@ __all__ = [
     "AuthorizedUpdate",
     "AuthorityCompositionError",
     "compose_authority",
+    "PrivilegedExecutionConfig",
+    "execute_privileged_update",
 ]
