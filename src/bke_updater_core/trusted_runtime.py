@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .privileged import FileReplayGuard, PrivilegedRequestVerifier
 from .privileged_entrypoint import PrivilegedExecutionConfig
-from .target_policy import TargetPolicyVerifier
+from .target_policy import TargetInstallPolicyVerifier
 from .verifier import PolicyVerifier
 
 
@@ -46,8 +46,8 @@ def _decode_keys(value: object, field: str) -> dict[str, bytes]:
 
 
 def _assert_private_runtime_path(path: Path) -> None:
-    if not path.is_absolute():
-        raise TrustedRuntimeError("trusted runtime root must be absolute")
+    if not path.is_absolute() or not path.is_dir():
+        raise TrustedRuntimeError("trusted runtime root must be an absolute directory")
     if os.name != "nt":
         mode = path.stat().st_mode & 0o777
         if mode & 0o022:
@@ -85,7 +85,7 @@ def load_privileged_execution_config(
     return PrivilegedExecutionConfig(
         request_verifier=PrivilegedRequestVerifier(agent_keys, consume_request_id=replay.consume),
         update_policy_verifier=PolicyVerifier(digital_keys),
-        target_policy_verifier=TargetPolicyVerifier(target_keys, approved_install_roots=tuple(approved_roots)),
+        target_policy_verifier=TargetInstallPolicyVerifier(target_keys, approved_roots=tuple(approved_roots)),
         staged_root=staged_root,
         backup_root=backup_root,
         transaction_id=transaction_id,
