@@ -4,6 +4,7 @@ from .policy import decide_update
 from .verifier import PolicyVerifier, VerificationError
 from .executor import ArtifactError, replace_transaction, verify_artifact
 from .staging import StagingError, stage_verified_zip
+from .privileged import FileReplayGuard, PrivilegedRequestError, PrivilegedRequestVerifier, PrivilegedUpdateRequest
 
 __all__ = [
     "Decision",
@@ -19,4 +20,8 @@ __all__ = [
     "verify_artifact",
     "StagingError",
     "stage_verified_zip",
+    "FileReplayGuard",
+    "PrivilegedRequestError",
+    "PrivilegedRequestVerifier",
+    "PrivilegedUpdateRequest",
 ]
