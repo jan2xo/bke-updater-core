@@ -17,7 +17,6 @@ def _files(root: Path) -> PrivilegedInvocationFiles:
     (root / "staged").mkdir()
     return PrivilegedInvocationFiles(
         runtime_root=root,
-        trust_config=root / "trust.json",
         request_document=root / "request.json",
         update_policy_document=root / "update.json",
         target_policy_document=root / "target.json",
@@ -37,6 +36,7 @@ def test_elevation_contract_exposes_no_install_authority(tmp_path: Path):
 
     assert "--install-root" not in command
     assert "--entry-point" not in command
+    assert "--trust-config" not in command
     assert "--trusted-agent-key" not in command
     assert "--trusted-digital-key" not in command
     assert "--trusted-bke-key" not in command
