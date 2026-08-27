@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, ctypes, os, queue, shutil, subprocess, threading, time
+import ctypes, os, queue, shutil, subprocess, threading, time
 from pathlib import Path
 from .protocol import HelperPlan
 from ..models import TransactionState
@@ -46,8 +46,6 @@ def _wait_for_exit_windows(pid:int,timeout:float,kernel32=None)->None:
     wait_timeout=0x00000102
     handle=api.OpenProcess(synchronize,False,pid)
     if not handle:
-        # The process already exited or cannot be opened. Treat an absent process
-        # as complete; access-denied remains fail-closed when a handle is returned.
         return
     try:
         milliseconds=max(0,min(int(timeout*1000),0xFFFFFFFE))
@@ -146,21 +144,14 @@ def replace_and_launch(plan:HelperPlan,wait_pid:int|None=None)->int:
         _terminal(plan,TransactionState.ROLLED_BACK,reason=str(exc))
         raise
 
-def main()->int:
-    parser=argparse.ArgumentParser()
-    for name in ("install-root","staged-root","backup-root","executable"):
-        parser.add_argument("--"+name,required=True)
-    parser.add_argument("--wait-pid",type=int)
-    parser.add_argument("--transaction-root")
-    parser.add_argument("--transaction-id")
-    parser.add_argument("--launch-arg",action="append",default=[])
-    parser.add_argument("--ready-marker")
-    parser.add_argument("--startup-timeout",type=float,default=10.0)
-    args=parser.parse_args()
-    plan=HelperPlan(Path(args.install_root),Path(args.staged_root),Path(args.backup_root),Path(args.executable),
-        transaction_root=Path(args.transaction_root) if args.transaction_root else None,
-        transaction_id=args.transaction_id,launch_args=tuple(args.launch_arg),
-        ready_marker=args.ready_marker,startup_timeout=args.startup_timeout)
-    return replace_and_launch(plan,args.wait_pid)
+def main(argv=None)->int:
+    """Production helper CLI.
+
+    Generic caller-selected install roots/executables are intentionally no longer
+    parsed here. Every command-line execution must enter through the privileged
+    signed-authority path.
+    """
+    from ..privileged_cli import main as privileged_main
+    return privileged_main(argv)
 
 if __name__=="__main__": raise SystemExit(main())
