@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, os, queue, shutil, subprocess, threading, time
+import argparse, ctypes, os, queue, shutil, subprocess, threading, time
 from pathlib import Path
 from .protocol import HelperPlan
 from ..models import TransactionState
@@ -39,8 +39,33 @@ def _terminal(plan:HelperPlan,state:TransactionState,**extra)->None:
     if plan.transaction_root and plan.transaction_id:
         TransactionStore(plan.transaction_root).write(plan.transaction_id,state,extra)
 
+def _wait_for_exit_windows(pid:int,timeout:float,kernel32=None)->None:
+    api=kernel32 or ctypes.windll.kernel32
+    synchronize=0x00100000
+    wait_object_0=0x00000000
+    wait_timeout=0x00000102
+    handle=api.OpenProcess(synchronize,False,pid)
+    if not handle:
+        # The process already exited or cannot be opened. Treat an absent process
+        # as complete; access-denied remains fail-closed when a handle is returned.
+        return
+    try:
+        milliseconds=max(0,min(int(timeout*1000),0xFFFFFFFE))
+        result=api.WaitForSingleObject(handle,milliseconds)
+        if result==wait_object_0:
+            return
+        if result==wait_timeout:
+            raise TimeoutError("target process did not exit")
+        raise OSError(f"WaitForSingleObject failed: {result}")
+    finally:
+        api.CloseHandle(handle)
+
 def wait_for_exit(pid:int|None,timeout:float=30.0):
     if pid is None: return
+    if pid<=0: raise ValueError("pid must be positive")
+    if os.name=="nt":
+        _wait_for_exit_windows(pid,timeout)
+        return
     deadline=time.monotonic()+timeout
     while time.monotonic()<deadline:
         try:
