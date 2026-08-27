@@ -6,10 +6,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from .privileged import FileReplayGuard, PrivilegedRequestVerifier
 from .privileged_entrypoint import PrivilegedExecutionConfig
-from .target_policy import TargetInstallPolicyVerifier
-from .verifier import PolicyVerifier
 
 
 class TrustedRuntimeError(ValueError):
@@ -54,15 +51,8 @@ def _assert_private_runtime_path(path: Path) -> None:
             raise TrustedRuntimeError("trusted runtime root is writable by group or others")
 
 
-def load_privileged_execution_config(
-    paths: TrustedRuntimePaths,
-    *,
-    staged_root: Path,
-    backup_root: Path,
-    transaction_id: str,
-    current_pid: int | None = None,
-) -> PrivilegedExecutionConfig:
-    """Load helper-owned trust anchors; invocation supplies no signing authority."""
+def load_privileged_execution_config(paths: TrustedRuntimePaths) -> PrivilegedExecutionConfig:
+    """Load helper-owned trust anchors and policy from the installed runtime."""
     _assert_private_runtime_path(paths.root)
     try:
         document = json.loads(paths.trust_file.read_text(encoding="utf-8"))
@@ -73,22 +63,38 @@ def load_privileged_execution_config(
 
     agent_keys = _decode_keys(document.get("agent_keys"), "agent_keys")
     digital_keys = _decode_keys(document.get("digital_keys"), "digital_keys")
-    target_keys = _decode_keys(document.get("target_keys"), "target_keys")
-    approved_roots = document.get("approved_install_roots")
-    allowed_channels = document.get("allowed_channels")
-    if not isinstance(approved_roots, list) or not approved_roots or not all(isinstance(v, str) and v for v in approved_roots):
-        raise TrustedRuntimeError("invalid approved_install_roots")
-    if not isinstance(allowed_channels, list) or not allowed_channels or not all(isinstance(v, str) and v for v in allowed_channels):
-        raise TrustedRuntimeError("invalid allowed_channels")
+    bke_keys = _decode_keys(document.get("target_keys"), "target_keys")
 
-    replay = FileReplayGuard(paths.replay_root)
+    approved_roots = document.get("approved_install_roots")
+    if (
+        not isinstance(approved_roots, list)
+        or not approved_roots
+        or not all(isinstance(value, str) and value for value in approved_roots)
+    ):
+        raise TrustedRuntimeError("invalid approved_install_roots")
+
+    expected_channel = document.get("expected_channel")
+    if not isinstance(expected_channel, str) or not expected_channel:
+        raise TrustedRuntimeError("invalid expected_channel")
+
+    last_update_policy_revision = document.get("last_update_policy_revision")
+    last_target_policy_revision = document.get("last_target_policy_revision")
+    if last_update_policy_revision is not None and (
+        not isinstance(last_update_policy_revision, int) or isinstance(last_update_policy_revision, bool)
+    ):
+        raise TrustedRuntimeError("invalid last_update_policy_revision")
+    if last_target_policy_revision is not None and (
+        not isinstance(last_target_policy_revision, int) or isinstance(last_target_policy_revision, bool)
+    ):
+        raise TrustedRuntimeError("invalid last_target_policy_revision")
+
     return PrivilegedExecutionConfig(
-        request_verifier=PrivilegedRequestVerifier(agent_keys, consume_request_id=replay.consume),
-        update_policy_verifier=PolicyVerifier(digital_keys),
-        target_policy_verifier=TargetInstallPolicyVerifier(target_keys, approved_roots=tuple(approved_roots)),
-        staged_root=staged_root,
-        backup_root=backup_root,
-        transaction_id=transaction_id,
-        allowed_channels=frozenset(allowed_channels),
-        current_pid=current_pid,
+        trusted_agent_keys=agent_keys,
+        trusted_digital_keys=digital_keys,
+        trusted_bke_keys=bke_keys,
+        approved_roots=tuple(approved_roots),
+        expected_channel=expected_channel,
+        replay_root=paths.replay_root,
+        last_update_policy_revision=last_update_policy_revision,
+        last_target_policy_revision=last_target_policy_revision,
     )
