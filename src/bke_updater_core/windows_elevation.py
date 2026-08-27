@@ -4,10 +4,9 @@ import ctypes
 import json
 import os
 import subprocess
-import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Mapping, Sequence
+from typing import Callable, Sequence
 
 
 class ElevationError(RuntimeError):
@@ -17,7 +16,6 @@ class ElevationError(RuntimeError):
 @dataclass(frozen=True)
 class PrivilegedInvocationFiles:
     runtime_root: Path
-    trust_config: Path
     request_document: Path
     update_policy_document: Path
     target_policy_document: Path
@@ -40,15 +38,15 @@ def _resolve_under(root: Path, value: Path, field: str, *, must_exist: bool = Tr
 def validate_invocation_files(files: PrivilegedInvocationFiles) -> PrivilegedInvocationFiles:
     """Resolve only helper-owned ephemeral inputs before requesting elevation.
 
-    Install root, entry point, signing keys and release authority are deliberately
-    absent from this contract. The elevated entrypoint derives those values from
-    the helper-owned trust configuration and signed documents.
+    Install root, entry point, trust-file selection, signing keys and release authority
+    are deliberately absent from this contract. The elevated entrypoint loads the
+    canonical `trust.json` from the helper-owned runtime root and derives authority
+    from the signed documents.
     """
 
     root = files.runtime_root.resolve(strict=True)
     return PrivilegedInvocationFiles(
         runtime_root=root,
-        trust_config=_resolve_under(root, files.trust_config, "trust_config"),
         request_document=_resolve_under(root, files.request_document, "request_document"),
         update_policy_document=_resolve_under(root, files.update_policy_document, "update_policy_document"),
         target_policy_document=_resolve_under(root, files.target_policy_document, "target_policy_document"),
@@ -75,7 +73,6 @@ def build_elevated_command(
         str(helper),
         "--privileged-update",
         "--runtime-root", str(validated.runtime_root),
-        "--trust-config", str(validated.trust_config),
         "--request", str(validated.request_document),
         "--update-policy", str(validated.update_policy_document),
         "--target-policy", str(validated.target_policy_document),
@@ -97,11 +94,7 @@ def request_windows_elevation(
     *,
     shell_execute: Callable[[str, str], int] | None = None,
 ) -> None:
-    """Request Windows UAC elevation with the `runas` verb.
-
-    This function intentionally accepts an already validated command. It does not
-    interpret product installation authority.
-    """
+    """Request Windows UAC elevation with the `runas` verb."""
 
     if os.name != "nt" and shell_execute is None:
         raise ElevationError("Windows elevation is only available on Windows")
